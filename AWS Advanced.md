@@ -23,9 +23,6 @@ o Deploy the application to AWS App Runner
 ▪ Private Subnets with “hu-primary-vpc-endpoint” and “hu-devops-vpc
 connector”*
 
-
-
-
 Subtask 2.1: Create and Deploy Docker Application
 
 **Step 1: Create Private ECR Repository with Managed Keys (Console)**
@@ -45,9 +42,9 @@ Note: CLI is necessary here to get the local image into AWS ECR.
 3. Build the image:
    docker build -t techstart-nginx-repo .
 4. Tag the image:
-   docker tag techstart-nginx-repo:latest [your-account-id.dkr.ecr.your-region.amazonaws.com/techstart-nginx-repo:latest](https://www.google.com/search?q=https://your-account-id.dkr.ecr.your-region.amazonaws.com/techstart-nginx-repo:latest)
+   docker tag techstart-nginx-repo:latest
 5. Push the image to ECR:
-   docker push [your-account-id.dkr.ecr.your-region.amazonaws.com/techstart-nginx-repo:latest](https://www.google.com/search?q=https://your-account-id.dkr.ecr.your-region.amazonaws.com/techstart-nginx-repo:latest)
+   docker push
 
 **Step 3: Start App Runner Deployment (Console)**
 
@@ -60,13 +57,10 @@ Note: CLI is necessary here to get the local image into AWS ECR.
 
 ---
 
-
-
 *• Subtask 2.2: Configure Auto Scaling
 o Set up auto scaling for the App Runner service.
 o Configure the Concurrency=100, minimum number of instances to 1 and the
 maximum to 2.*
-
 
 **Step 4: Configure Compute and Environment Variables (Console)**
 
@@ -86,26 +80,19 @@ maximum to 2.*
 
 **Step 6: Configure Private Subnets and VPC Connector (Console)**
 
-1.  to the Networking section.
+1. to the Networking section.
 2. Under Outgoing network traffic, select Custom VPC.
 3. Select the specific Private Subnets associated with that endpoint.
 4. Select Security groups.
 5. use this VPC connector.
 
-
-
 ---
-
-
-
 
 • *Subtask 2.3: Enable Service Features and Monitoring
 o Enable HTTPS for secure access to the App Runner service.
 o Set environment variables for application configuration.
 o Enable Amazon CloudWatch logging for the App Runner service to monitor
 application health and traffic.*
-
-
 
 **Step 7: Enable HTTPS, CloudWatch, and Deploy (Console)**
 
@@ -114,8 +101,6 @@ application health and traffic.*
 3. Once the service status changes to Running, click the Default domain URL provided in the console to securely access your NGINX application.
 
 ---
-
-
 
 ***Question 2:
 Scenario Story
@@ -130,7 +115,6 @@ o Create an AWS CodeCommit repository and push your application code (including
 Dockerfile and index.html).
 o Create an Amazon Elastic Container Registry (Amazon ECR) repository to store
 Docker images.***
-
 
 Step 1: Create AWS CodeCommit Repository (Console)
 
@@ -149,7 +133,6 @@ Step 2: Create and Push Application Code (Terminal)
    echo "FROM nginx:alpine" > Dockerfile
    echo "COPY index.html /usr/share/nginx/html" >> Dockerfile
 4. Initialize Git and add the files:
-   
 5. Add the remote repository
 6. Push the code to AWS CodeCommit:
    git push -u origin master
@@ -159,20 +142,14 @@ Step 3: Create Amazon ECR Repository (Console)
 1. Open the **Amazon ECR** console.
 2. Create Repo
 
-
-
-*
 **• Subtask 2: Configure CI/CD Pipeline with AWS CodePipeline and CodeBuild
 o Set up AWS CodePipeline to trigger on changes in CodeCommit.
 o Configure AWS CodeBuild to build the Docker image and push it to ECR using a
 buildspec.yml file.***
 
-
 Step 1: Add buildspec.yml to Repository
 
 1. Create a file named **buildspec.yml** in your local repository folder. Add the required code
-
-
 2. **Push the file to CodeCommit using these commands in your terminal:**
    git  add buildspec.yml
    **git commit -m "Add builds**pec.yml
@@ -180,17 +157,12 @@ Step 1: Add buildspec.yml to Repository
 
 ---
 
-
-
-
 ***• Subtask 3: Deploy Application Using AWS ECS Fargate
 o Create an Amazon Elastic Container Service (Amazon ECS) cluster and service
 using AWS Fargate.
 Configure the service to pull the Docker image from ECR and run the container.***
 
-
 ---
-
 
 ***Question 4:
 Create Resources using CLI:
@@ -208,7 +180,6 @@ Application Firewall (WAF) that you create.
 • Configure NGINX to pass data through a Kinesis stream and direct the data to Kinesis
 Data Analytics for further analysis.
 • Using AWS CLI***
-
 
 .Answer:
 
@@ -262,9 +233,6 @@ o Create an architecture diagram in draw.io (diagrams.net) that illustrates the 
 to-end solution flow, Ex: Client → API Gateway (REST API) → Lambda
 (Create/Get/Delete) → DynamoDB, including IAM authorization/API keys, usage
 plans & throttling, and CloudWatch logging/monitoring.***
-
-
-
 
 **1) Create DynamoDB table**
 

@@ -108,7 +108,6 @@ Then create a IAM policy that grants only write access to the bucket. Then creat
 ***• Subtask 3: Attach Role and Validate Restricted Access
  Attach the IAM role to the EC2 instance.***
 
-
 *** Verify the instance can upload log files to the designated S3 bucket, but cannot access other S3 buckets or unrelated AWS resources.***
 
 *Attach IAM Role to EC2*
@@ -141,283 +140,47 @@ Manually Trigger the script using /usr/local/bin/upload_logs.sh and verify by us
 
 ---
 
-Here is the step-by-step solution formatted in Markdown. You can copy and paste this directly into your documentation.
 
----
-
-# Question 5:
-
-## Subtask 1: Build and Publish Custom Apache Docker Image to ECR
-
-**Objective:** Create a custom Docker image and push it to Amazon ECR.
-
-### 1. Create Dockerfile
-
-Create a file named `Dockerfile`:
-
-**Dockerfile**
-
-# Use the official httpd image (Apache)
-
-FROM httpd:2.4
-
-# Copy custom index.html to the container
-
-RUN echo "`<html><h1>`Hello from AWS ECS!`</h1></html>`" > /usr/local/apache2/htdocs/index.html
-
-# Expose port 80
-
-EXPOSE 80
-
-### 2. Create ECR Repository
-
-aws ecr create-repository 
-    --repository-name $ECR_REPO_NAME
-    --region $AWS_REGION
-
-### 3. Build and Push Image
-
-```
-
-```
-
-Login to ECR
-
-***aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin ${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com***
-
-Build the Docker image
-
-docker build -t $ECR_REPO_NAME .
-
-Tag the image
-
-docker tag $ECR_REPO_NAME:latest ${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/$ECR_REPO_NAME:latest
-
-Push to ECR
-
-docker push ${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/$ECR_REPO_NAME:latest
-
-# Login to ECR
-
-aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin ${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
-
-# Build the Docker image
-
-docker build -t $ECR_REPO_NAME .
-
-# Tag the image
-
-docker tag $ECR_REPO_NAME:latest ${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/$ECR_REPO_NAME:latest
-
-# Push to ECR
-
-docker push ${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/$ECR_REPO_NAME:latest
-
----
-
-## Subtask 3: Configure Application Load Balancer and Health Checks
-
-
-### Create Target Group with Health Checks
-
-**Bash**
-
-```
-aws elbv2 create-target-group \
-    --name $TG_NAME \
-    --protocol HTTP \
-    --port 80 \
-    --vpc-id $VPC_ID \
-    --target-type ip \
-    --health-check-path "/" \
-    --health-check-interval-seconds 30
-```
-
-1
-
----
-
-## Subtask 2: Deploy Apache Service on ECS with Auto Scaling
-
-**Objective:** Deploy the container with specific resources (0.25 vCPU, 0.5GB RAM) and enable auto-scaling.
-
-### 1. Create ECS Cluster
-
-**Bash**
-
-```
-aws ecs create-cluster --cluster-name $CLUSTER_NAME
-```
-
-### 2. Register Task Definition (0.25 vCPU / 0.5GB RAM)
-
-Create `task-def.json`:
-
-**JSON**
-
-```
-{
-    "family": "apache-task",
-    "networkMode": "awsvpc",
-    "requiresCompatibilities": ["FARGATE"],
-    "cpu": "256",
-    "memory": "512",
-    "executionRoleArn": "arn:aws:iam::ACCOUNT_ID_HERE:role/ecsTaskExecutionRole",
-    "containerDefinitions": [
-        {
-            "name": "apache-container",
-            "image": "ACCOUNT_ID_HERE.dkr.ecr.REGION_HERE.amazonaws.com/custom-apache-repo:latest",
-            "portMappings": [{"containerPort": 80, "protocol": "tcp"}],
-            "essential": true,
-            "logConfiguration": {
-                "logDriver": "awslogs",
-                "options": {
-                    "awslogs-group": "/ecs/apache-task",
-                    "awslogs-region": "REGION_HERE",
-                    "awslogs-stream-prefix": "ecs"
-                }
-            }
-        }
-    ]
-}
-```
-
-*Replace `ACCOUNT_ID_HERE` and `REGION_HERE` in the file manually or using `sed`.*
-
-Register the task:
-
-**Bash**
-
-```
-aws ecs register-task-definition \
-    --cli-input-json file://task-def.json
-```
-
-### 3. Deploy ECS Service (Linked to ALB)
-
-**Bash**
-
-```
-aws ecs create-service \
-    --cluster $CLUSTER_NAME \
-    --service-name $SERVICE_NAME \
-    --task-definition $TASK_FAMILY \
-    --desired-count 2 \
-    --launch-type FARGATE \
-    --network-configuration "awsvpcConfiguration={subnets=[$SUBNET_1,$SUBNET_2],securityGroups=[$SECURITY_GROUP],assignPublicIp=ENABLED}" \
-    --load-balancers "targetGroupArn=$TG_ARN,containerName=apache-container,containerPort=80"
-```
-
-### 4. Enable Service Auto Scaling (CPU Based)
-
-**Register Scalable Target:**
-
-**Bash**
-
-```
-aws application-autoscaling register-scalable-target \
-    --service-namespace ecs \
-    --resource-id service/$CLUSTER_NAME/$SERVICE_NAME \
-    --scalable-dimension ecs:service:DesiredCount \
-    --min-capacity 1 --max-capacity 5
-```
-
-**Create Scaling Policy (Target Tracking - 70% CPU):**
-
-Create `scaling-policy.json`:
-
-**JSON**
-
-```
-{
-    "TargetValue": 70.0,
-    "PredefinedMetricSpecification": {
-        "PredefinedMetricType": "ECSServiceAverageCPUUtilization"
-    }
-}
-```
-
-Apply Policy:
-
-**Bash**
-
-```
-aws application-autoscaling put-scaling-policy \
-    --service-namespace ecs \
-    --resource-id service/$CLUSTER_NAME/$SERVICE_NAME \
-    --scalable-dimension ecs:service:DesiredCount \
-    --policy-name cpu-auto-scaling \
-    --policy-type TargetTrackingScaling \
-    --target-tracking-scaling-policy-configuration file://scaling-policy.json
-```
-
----
-
-## Subtask 4: Enable Observability (Logs + Alarms)
-
-**Objective:** Capture logs and alarm on high CPU.
-
-### 1. Enable CloudWatch Logs
-
-*Note: The Log Group configuration was included in the Task Definition in Subtask 2. Ensure the log group exists:*
-
-**Bash**
-
-```
-aws logs create-log-group --log-group-name "/ecs/apache-task"
-```
-
-### 2. Set up CloudWatch Alarm for High CPU
-
-**Bash**
-
-```
-aws cloudwatch put-metric-alarm \
-    --alarm-name "HighCPU-ApacheService" \
-    --metric-name CPUUtilization \
-    --namespace AWS/ECS \
-    --statistic Average \
-    --period 60 \
-    --threshold 80 \
-    --comparison-operator GreaterThanThreshold \
-    --dimensions Name=ClusterName,Value=$CLUSTER_NAME Name=ServiceName,Value=$SERVICE_NAME \
-    --evaluation-periods 1 \
-    --alarm-actions <ARN_OF_SNS_TOPIC_OR_ACTION>
-```
-
----
-
-## Subtask 5: Validate End-to-End Deployment
-
-**Objective:** Verify access and metrics.
-
-### 1. Access the Apache Welcome Page
-
-Retrieve the ALB DNS Name:
-
-**Bash**
-
-```
-aws elbv2 describe-load-balancers \
-    --names $ALB_NAME \
-    --query "LoadBalancers[0].DNSName" --output text
-```
-
-**Action:** Copy the DNS URL output (e.g., `apache-alb-12345.us-east-1.elb.amazonaws.com`) and paste it into a browser. You should see "Hello from AWS ECS!".
-
-### 2. Show CloudWatch Metrics
-
-To view metrics via CLI:
-
-**Bash**
-
-```
-aws cloudwatch get-metric-statistics \
-    --namespace AWS/ECS \
-    --metric-name CPUUtilization \
-    --dimensions Name=ClusterName,Value=$CLUSTER_NAME Name=ServiceName,Value=$SERVICE_NAME \
-    --start-time $(date -u -d '10 minutes ago' +%Y-%m-%dT%H:%M:%SZ) \
-    --end-time $(date -u +%Y-%m-%dT%H:%M:%SZ) \
-    --period 60 \
-    --statistics Average
-```
+***Question 5:
+Scenario:
+A tech company wants to modernize its web application deployment process using containers and AWS managed services. They need to ensure that their custom web server image is securely stored, easily deployed, highly available, and monitored for health and performance.
+Task: Deploy Scalable Apache Container on AWS ECS with ALB and Monitoring***
+
+
+•** *Subtask 1: Build and Publish Custom Apache Docker Image to ECR
+ Create a custom Docker image running Apache HTTP Server.
+ Push the image to Amazon Elastic Container Registry (Amazon ECR).***
+
+**
+*• Subtask 2: Deploy Apache Service on ECS with Auto Scaling
+ Set up an Amazon Elastic Container Service (Amazon ECS) cluster.
+ Deploy the Apache container as an ECS service with 0.25 vCPU, 0.5GB Memory
+ Enable service auto scaling based on CPU utilization.***
+
+**
+*• Subtask 3: Configure Application Load Balancer and Health Checks
+ Configure an Application Load Balancer (ALB) to distribute incoming HTTP traffic to
+the ECS service.
+ Set up container health checks (via the ALB target group) to ensure only healthy
+tasks receive traffic.***
+
+**
+*• Subtask 4: Enable Observability (Logs + Alarms)
+ Enable Amazon CloudWatch Logs for the ECS service to capture container logs.
+ Set up a CloudWatch alarm for high CPU usage.***
+
+***• Subtask 5: Validate End-to-End Deployment
+ Access the Apache welcome page via the Load Balancer DNS name.
+ Show CloudWatch metrics for the ECS service to demonstrate scaling/health visibility***
+
+
+1. **Create Dockerfile** : Create a file named `Dockerfile` that uses `httpd:2.4` as the base image and copies a custom `index.html` file to the server's root directory.
+2. **Provision ECR Repo** : Run the `aws ecr create-repository` command to create a private repository named `custom-apache-repo` for storing your image.
+3. **Build and Push Image** : Authenticate Docker to ECR, build the image locally with a specific tag, and push it to the `custom-apache-repo` URI in ECR.
+4. **Create Load Balancer** : Use the `aws elbv2 create-load-balancer` command to provision an internet-facing Application Load Balancer across two public subnets.
+5. **Configure Target Group** : Create a Target Group with `IP` target type using `aws elbv2 create-target-group` and set the health check path to `/` on port 80.
+6. **Setup Listener** : Create an HTTP listener on port 80 for the Load Balancer that forwards all incoming traffic to the Target Group created in the previous step.
+7. **Register Task Definition** : Create a task definition JSON file specifying the ECR image URI, 0.25 vCPU, 0.5GB memory, and the CloudWatch log group configuration, then register it with ECS.
+8. **Deploy ECS Service** : Create an ECS Service using the Fargate launch type, setting the desired count to 2, and linking it to the Load Balancer's Target Group.
+9. **Enable Auto Scaling** : Register the ECS service as a scalable target and apply a Target Tracking scaling policy to maintain average CPU utilization at 70%.
+10. **Verify Deployment** : Retrieve the Load Balancer's DNS name to access the website, and use the CloudWatch console to verify that logs are appearing and CPU metrics are being tracked.
