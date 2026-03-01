@@ -1,0 +1,13 @@
+replicaCount: 1
+
+image:
+  repository: products-service
+  pullPolicy: IfNotPresent
+  tag: "latest"
+
+service:
+  type: ClusterIP
+  port: 5002
+
+env:
+  DATABASE_URI: "postgresql://postgres:postgres123@postgres-cluster-ha:5432/products_db"

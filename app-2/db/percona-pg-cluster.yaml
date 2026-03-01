@@ -1,0 +1,32 @@
+apiVersion: pg.percona.com/v2
+kind: PerconaPGCluster
+metadata:
+  name: postgres-cluster
+spec:
+  crVersion: 2.3.0
+  instances:
+    - name: instance1
+      replicas: 1
+      dataVolumeClaimSpec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 2Gi
+  proxy:
+    pgBouncer:
+      replicas: 1
+  users:
+    - name: postgres
+      databases:
+        - users_db
+        - products_db
+        - orders_db
+      secretName: postgres-cluster-creds
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: postgres-cluster-creds
+stringData:
+  password: postgres123

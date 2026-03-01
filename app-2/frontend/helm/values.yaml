@@ -1,0 +1,15 @@
+replicaCount: 1
+
+image:
+  repository: frontend-proxy
+  pullPolicy: IfNotPresent
+  tag: "latest"
+
+service:
+  type: ClusterIP
+  port: 5000
+
+env:
+  USERS_SERVICE_URL: "http://release-name-users-service:5001"
+  PRODUCTS_SERVICE_URL: "http://release-name-products-service:5002"
+  ORDERS_SERVICE_URL: "http://release-name-orders-service:5003"

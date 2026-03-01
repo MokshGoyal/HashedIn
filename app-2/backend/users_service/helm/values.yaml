@@ -1,0 +1,13 @@
+replicaCount: 1
+
+image:
+  repository: users-service
+  pullPolicy: IfNotPresent
+  tag: "latest"
+
+service:
+  type: ClusterIP
+  port: 5001
+
+env:
+  DATABASE_URI: "postgresql://postgres:postgres123@postgres-cluster-ha:5432/users_db"

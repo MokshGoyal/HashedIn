@@ -1,0 +1,13 @@
+replicaCount: 1
+
+image:
+  repository: orders-service
+  pullPolicy: IfNotPresent
+  tag: "latest"
+
+service:
+  type: ClusterIP
+  port: 5003
+
+env:
+  DATABASE_URI: "postgresql://postgres:postgres123@postgres-cluster-ha:5432/orders_db"
